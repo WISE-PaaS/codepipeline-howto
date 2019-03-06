@@ -22,5 +22,58 @@ This document will explain how to implement the continuous integration and deliv
 
 <br>
 
-## Build Pipeline
+## Prerequisites
+
+### I. Apply for the CodePipeline 
+
+1. File a [support ticket](https://portal-support.wise-paas.com/web/tickets.html) for the access to the CodePipeline service
+
+The Org entry depends on your situation.
+
+![support-ticket-codepipeline](files/ticket-codepipeline.png)
+
+2. After getting approved, go to the [CodePipeline Portal](https://portal-codepipeline.wise-paas.com). Make sure you have the _Private_ section. This will be the place where you create your own pipelines.
+
+![private](files/private.png)
+
+<br>
+
+### II. Create a Git Credential on CodePipeline
+
+1. You must have a GitLab or GitHub account.
+
+2. Go to your Pipeline Portal and hover over the little avatar icon at the top-right corner. The dropdown menu will show up.
+
+3. Click Profile.
+![profile](files/profile.png)
+
+4. Click the Credential button on the sidebar.
+
+5. Input the username and password of your GitLab/GitHub account.
+
+6. Click the Add button. A new credential will be created. This credential will be used when you set up a new pipeline.
+
+<br>
+
+### III. Apply for the blob container
+
+1. File a [support ticket](https://portal-support.wise-paas.com/web/tickets.html) for the access to a blob container.
+
+![ticket-blob](files/ticket-blob.png)
+
+2. You will receive two keys
+- One is encrypted. It looks like 
+
+**rjesasdasdQkz/VUO9CoKasdasd0hOX/0vwVFox21bmck7aVasdasdasdAAsdafswgsadFAdsfjYYgwoCe+wBasDq+FtEEU+SxXfsdfafhwerSDGserWNKZGWVTg==**
+
+This will be used as a credential in your pipeline to operate the blob contaier.
+
+- The other looks like
+
+**https://wisepaasdevelop.blob.core.windows.net/srpok?sv=2011-01-10&si=sedev-1587307A233&sr=c&sig=NdaY8sdasdfWQEHFTWetdryweRGDSFnculq9AR%2BTRFA%5D**
+
+This one can be used with the **Azure Storage Explorer** to connect to your blob container.
+
+**Do not reveal this one to anyone because it is not encrypted.**
+
 
