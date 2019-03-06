@@ -1,4 +1,8 @@
-# WISE-PaaS - CodePipeline
+# WISE-PaaS CodePipeline
+
+This document will explain how to implement the continuous integration and delivery using the WISE-PaaS CodePipeline.
+
+<br>
 
 ## Concept
 
