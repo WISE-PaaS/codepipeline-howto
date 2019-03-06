@@ -1,0 +1,148 @@
+node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面执行的，避免与其他app的部署产生冲突
+	def result = "SUCCESS"   //result变量用来记录pipeline执行的结果，初始化为SUCCESS
+	def postgresql_service_group = "g_sample"   //配置postgresql的group参数
+	def app_package_name = "javasamplecode"   //上传到blob的package名称的前缀，例如package的名称为javasamplecode_1.0.0.zip，其前缀为javasamplecode
+	def app_host = "portal-javasamplecode"   //app route的前缀，例如前缀为portal-javasamplecode，之后route会自动组合为portal-javasamplecode-orgname-spacename
+	def blob_container = "javasamplecode"   //package所在的blob的container的名字，需要跟平台管理员申请
+	def blob_container_key = 'WSsGUdfUpGlFJdNASGWn3qSogHRRty49IfS8JJ4M69l5axPvP4hwh/RUJrsFZPwrgph9enmS+wgxTZxf7lWdR78kUqeLkKIusxr9K0sfgsa5ASW58bO37gHLqv1p+8bQEOUYLFRTKXBYc9cqPh1JZKvw5l2lZxM1a3zaBbR7/hI=' //上传下载blob所需要的key，需要跟平台管理员申请
+	try {
+		//做一些准备工作
+		stage('Prepare'){
+			//清除上一次pipeline执行记录
+			sh 'rm -rf *'
+
+			//解析service的参数
+			if (mongodb_service_info == "") {
+				mongodb_service_name = "mongodb"
+				mongodb_service_plan = "Shared"
+				mongodb_service_instance_name = "mongodb"
+			} else {
+				mongodb_info_list = mongodb_service_info.split(':')
+				mongodb_service_name = mongodb_info_list[0]
+				mongodb_service_plan = mongodb_info_list[1]
+				mongodb_service_instance_name = mongodb_info_list[2]
+			}
+			if (postgresql_service_info == "") {
+				postgresql_service_name = "postgresql"
+				postgresql_service_plan = "Shared"
+				postgresql_service_instance_name = "postgresql"
+			} else {
+				postgresql_info_list = postgresql_service_info.split(':')
+				postgresql_service_name = postgresql_info_list[0]
+				postgresql_service_plan = postgresql_info_list[1]
+				postgresql_service_instance_name = postgresql_info_list[2]
+			}
+			if (rabbitmq_service_info == "") {
+				rabbitmq_service_name = "p-rabbitmq"
+				rabbitmq_service_plan = "standard"
+				rabbitmq_service_instance_name = "rabbitmq"
+			} else {
+				rabbitmq_info_list = rabbitmq_service_info.split(':')
+				rabbitmq_service_name = rabbitmq_info_list[0]
+				rabbitmq_service_plan = rabbitmq_info_list[1]
+				rabbitmq_service_instance_name = rabbitmq_info_list[2]
+			}
+
+			//将org和space名字都转为小写，组合route时使用
+			lowOrgName = cf_org.toLowerCase()
+			lowSpaceName = cf_space.toLowerCase()
+
+			//获取org的guid
+			sh "cf login -u $cf_username -p $cf_password -o $cf_org -s $cf_space -a api.$cf_domain --skip-ssl-validation;cf org $cf_org --guid>>orgid.txt"
+			org_id = readFile('orgid.txt').tokenize()[0]
+			if (org_id == "FAILED") {
+				error "Get org_id failed!!!"
+			}
+
+			//下载修改manifest的脚本
+			dir("manifest_operation"){
+				retry(2){
+					git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/manifest_operation.git'
+				}
+			}
+
+			//下载从blob上传或者下载package的脚本
+			dir("blob_operation"){
+				retry(2){
+					git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload.git'
+				}
+			}
+		}
+
+		stage("Download") {
+			dir("${app_package_name}"){
+				if (DeployVersion == "") {
+					retry(2){
+						timeout(5){
+							//如果DeployVersion为空，下载最新版本的zip包
+							sh "python3 ../blob_operation/blobUploadDownload.py downloadlatest ${blob_container} ${app_package_name}  ./ .zip ${blob_container_key}"
+						}
+					}
+					//获取zip包的名字
+					sh "find -name '*.zip'>zipName.txt"
+					zipName = readFile("zipName.txt").tokenize('/')[1].tokenize()[0]
+					zipVersion = zipName.tokenize('_')[1]
+					DeployVersion = zipVersion.split('.zip')[0]
+				} else {
+					zipName = "${app_package_name}_${DeployVersion}.zip"
+					retry(2){
+						timeout(5){
+							//下载指定版本的zip包
+							sh "python3 ../blob_operation/blobUploadDownload.py download ${blob_container} ${zipName}  ./${zipName} ${blob_container_key}"
+						}
+					}
+				}
+				//解压zip包
+				sh "unzip -o -d ./ ${zipName}"
+				//复制manifest
+				sh "cp manifest.yml manifest-${lowOrgName}-${lowSpaceName}.yml"
+				//读取app的名字
+				sh "python3 ../manifest_operation/GetAppName.py  manifest-${lowOrgName}-${lowSpaceName}.yml"
+				app_name = readFile("appname.txt")
+				//从app的名字中解析出app的version
+				app_version = app_name.tokenize('-')[-1].tokenize()[0]
+				if (DeployVersion != app_version) {
+					error "Package version is different with version in app name!!!"
+				}
+				//修改manifest，1. 修改host，加上带版本的host，修改后的格式为"${app_host}-1-0-0-${lowOrgName}-${lowSpaceName}"；2. 在环境变量中加上org_name和org_id，用于注册sso； 3. 在环境变量中加入各个service的名字，主要为读取credential使用
+				sh "python3 ../manifest_operation/ModifyManifest.py manifest-${lowOrgName}-${lowSpaceName}.yml ${lowOrgName} ${lowSpaceName} ${cf_domain} ${app_host} ${DeployVersion} ${postgresql_service_name}:${postgresql_service_instance_name} ${mongodb_service_name}:${mongodb_service_instance_name} ${rabbitmq_service_name}:${rabbitmq_service_instance_name} org_name:${cf_org},org_id:${org_id}"
+				sh "cat manifest-${lowOrgName}-${lowSpaceName}.yml"
+			}
+		}
+
+		//部署app到指定的space
+		stage("Deploy") {
+			dir("${app_package_name}") {
+				retry(5){
+					//1.push app到CF，push之后先不启动app；2.为app绑定postgresql服务；3.启动app
+					sh "cf push -f manifest-${lowOrgName}-${lowSpaceName}.yml --no-start"
+					sh """ cf bind-service ${app_name} ${postgresql_service_instance_name} -c '{\"groups\":[\"${postgresql_service_group}\"]}' """
+					sh "cf start ${app_name}"
+				}
+			}
+		}
+
+		//蓝绿切换，1. IfMapUrlDirectly为true，将host map到新的app，并从旧的app unmap掉，停止旧版本的app；2. IfRemainBlueVersion为true，删除旧的app，并删除带版本的url；
+		stage("Blue_Green_Switch") {
+			build job: 'pipeline_Blue_Green_Switch', parameters: [
+				[$class: 'StringParameterValue', name: 'cf_domain', value: "${cf_domain}"],
+				[$class: 'StringParameterValue', name: 'cf_username', value: "${cf_username}"],
+				[$class: 'PasswordParameterValue', name: 'cf_password', value: "${cf_password}"],
+				[$class: 'StringParameterValue', name: 'cf_org', value: "${cf_org}"],
+				[$class: 'StringParameterValue', name: 'cf_space', value: "${cf_space}"],
+				[$class: 'BooleanParameterValue', name: 'IfMapUrlDirectly', value: "${IfMapUrlDirectly}".toBoolean()],
+				[$class: 'BooleanParameterValue', name: 'IfRemainBlueVersion', value: "${IfRemainBlueVersion}".toBoolean()],
+				[$class: 'StringParameterValue', name: 'app_name', value: "${app_name}"],
+				[$class: 'StringParameterValue', name: 'app_host', value: "${app_host}-${lowOrgName}-${lowSpaceName}"]]
+		}
+	}
+	catch (err) {
+		//当执行过程出现异常时，捕获异常
+		echo "Caught: ${err}"
+		result = 'FAILURE'
+	}
+	finally {
+		//设置pipeline执行状态
+		currentBuild.result = result
+	}
+}

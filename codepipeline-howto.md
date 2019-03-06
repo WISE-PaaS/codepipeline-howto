@@ -45,6 +45,7 @@ The Org entry depends on your situation.
 2. Go to your Pipeline Portal and hover over the little avatar icon at the top-right corner. The dropdown menu will show up.
 
 3. Click Profile.
+
 ![profile](files/profile.png)
 
 4. Click the Credential button on the sidebar.
@@ -70,10 +71,37 @@ This will be used as a credential in your pipeline to operate the blob contaier.
 
 - The other looks like
 
-**https://wisepaasdevelop.blob.core.windows.net/srpok?sv=2011-01-10&si=sedev-1587307A233&sr=c&sig=NdaY8sdasdfWQEHFTWetdryweRGDSFnculq9AR%2BTRFA%5D**
+**https://wisepaasdevelop.blob.core.windows.net/srpok?sv=2018-01-01&si=sedev-1587307A233&sr=c&sig=NdaY8sdasdfWQEHFTWetdryweRGDSFnculq9AR%2BTRFA%5D**
 
 This one can be used with the **Azure Storage Explorer** to connect to your blob container.
 
 **Do not reveal this one to anyone because it is not encrypted.**
 
+<br>
+
+### IV. Download and install Microsoft Azure Storage Explorer
+
+1. Download the [software](https://azure.microsoft.com/en-us/features/storage-explorer/) and install it on your computer.
+
+2. Open the software and click "Add Account" button on the sidebar.
+
+3. Select the following option and click Next
+
+![blob setting uri](files/blob-setting1.png)
+
+4. Paste the string starting with "https" into the URI field. The Display name wiil be automatically created.
+
+![blob setting uri](files/blob-setting2.png)
+
+5. Click connect. You should be able to see your blob container on the side. The container's name will be the same as your SRP name.
+
+![blob container](files/blob.png)
+
+6. Try to upload some files and then download them from the blob container.
+
+<br>
+
+## Build Pipeline
+
+## Deploy Pipeline
 
