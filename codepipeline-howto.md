@@ -4,6 +4,15 @@ This document will explain how to implement the continuous integration and deliv
 
 <br>
 
+### Table of Contents
+- [Concept](#Concept)
+- [Prerequisites](#Prerequisites)
+- [Develop a Build Pipeline](#Develop-a-Build-Pipeline)
+- [Run a Pipeline](#Run-a-Pipeline)
+- [Develop a Deploy Pipeline](#Develop-a-Deploy-Pipeline)
+
+<br>
+
 ## Concept
 
 <br>
@@ -101,7 +110,7 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 
 <br>
 
-## Build Pipeline
+## Develop a Build Pipeline
 
 <br>
 
@@ -109,5 +118,5 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 
 <br>
 
-## Deploy Pipeline
+## Develop a Deploy Pipeline
 
