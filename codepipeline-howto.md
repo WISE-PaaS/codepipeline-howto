@@ -103,5 +103,11 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 
 ## Build Pipeline
 
+<br>
+
+## Run a Pipeline
+
+<br>
+
 ## Deploy Pipeline
 
