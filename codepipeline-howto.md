@@ -2,16 +2,13 @@
 
 This document will explain how to implement the continuous integration and delivery using the WISE-PaaS CodePipeline.
 
-<br>
-
 ### Table of Contents
 - [Concept](#Concept)
 - [Prerequisites](#Prerequisites)
 - [Develop a Build Pipeline](#Develop-a-Build-Pipeline)
 - [Run a Pipeline](#Run-a-Pipeline)
 - [Develop a Deploy Pipeline](#Develop-a-Deploy-Pipeline)
-
-<br>
+- [Submit Your SRP Package](#Submit-Your-SRP-Package)
 
 ## Concept
 
@@ -110,6 +107,22 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 
 <br>
 
+### V. Apply for a new group on the WISE-PaaS Gitlab
+
+1. File a [support ticket](https://portal-support.wise-paas.com/web/tickets.html) to create your own group on [WISE-PaaS Gitlab](http://advgitlab.eastasia.cloudapp.azure.com/). Please fill out the form with the following content.
+
+    - Project: [CodePipeline]
+    - Subject: [GitLab] Applying for the access to the WISE-PaaS GitLab
+    - Description
+      - Account: \<userAccount\>
+      - Purpose: To develop the auto-deploy pipeline for the SRP: \<srpName\>
+
+2. You will soon receive a confirmation that a group named as your SRP name has been created. You can create your own project inside the group
+
+3. Make sure you can accesss the [blobUploadDownload](http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload) repository. If you still don't have the permission, go to the ticket that you filed and comment down your problem, and someone will help you fix it shortly.
+
+<br>
+
 ## Develop a Build Pipeline
 
 <br>
@@ -119,4 +132,19 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 <br>
 
 ## Develop a Deploy Pipeline
+
+<br>
+
+## Submit Your SRP Package
+
+
+
+
+
+
+
+
+
+
+
 
