@@ -307,19 +307,19 @@ node('gradle') {
 
 ```groovy
   // Store the pipeline execution result. The inital value is 'SUCCESS'.
-	def result = "SUCCESS"
+  def result = "SUCCESS"
 
   // Prefix of the name of the package that you will upload to the blob.
   // Example: the package's name is 'StaticSampleCode_1.0.0.zip' 
-	def app_package_name="StaticSampleCode"
+  def app_package_name="StaticSampleCode"
 
   // The name of the container that you have requested in the previous step
-	def blob_container="sedev"
+  def blob_container="sedev"
 
   // def blob_container_key= 'we suggest you set this value in your pipeline'
 
   // URL of your remote repository for the source code
-	def sourceCodeGitUrl="http://advgitlab.eastasia.cloudapp.azure.com/SE-Dev/Static-Sample-Code.git"
+  def sourceCodeGitUrl="http://advgitlab.eastasia.cloudapp.azure.com/SE-Dev/Static-Sample-Code.git"
 ```
 
 <br>
@@ -431,64 +431,64 @@ Five parameters for running _blobUploadDownload_ script:
   }
 ```
 
-**The whole build script**
+**The whole build script looks like:**
 
 ```groovy
 node('gradle') {
-	def result = "SUCCESS" 
-	def app_package_name = "StaticSampleCode"
-	def blob_container = "sedev"
-	def sourceCodeGitUrl = "http://advgitlab.eastasia.cloudapp.azure.com/SE-Dev/Static-Sample-Code.git"
+  def result = "SUCCESS"
+  def app_package_name = "StaticSampleCode"
+  def blob_container = "sedev"
+  def sourceCodeGitUrl = "http://advgitlab.eastasia.cloudapp.azure.com/SE-Dev/Static-Sample-Code.git"
 
-	try{                  
-		stage('Prepare') { 
-			sh 'rm -rf *'
-			
-			dir("Blob") {
-				retry(2) {
-					git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload.git'
-				}
-			}	
-		}         
-		
-		stage("Build") {
-			dir("${app_package_name}") {
-				retry(2) {
-					git credentialsId: "${git_credential}", url: "${sourceCodeGitUrl}"  
-				}
-				
-				if(TagName=="") {
-				    sh 'git describe --tags `git rev-list --tags --max-count=1`>newestTag.txt'  
-				    TagName=readFile("newestTag.txt")
-				}
-				sh "git checkout $TagName"
-				packageVersion=TagName.tokenize('-')[1].tokenize()[0]
-				
-				//sh "gradle build"
-				//sh "gradle fatJar"
-				//sh "gradle makeManifest"
-			}
-		}
+  try {
+    stage('Prepare') {
+      sh 'rm -rf *'
+
+      dir("Blob") {
+        retry(2) {
+          git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload.git'
+        }
+      }
+    }
+
+    stage("Build") {
+      dir("${app_package_name}") {
+        retry(2) {
+          git credentialsId: "${git_credential}", url: "${sourceCodeGitUrl}"
+        }
+
+        if (TagName == "") {
+          sh 'git describe --tags `git rev-list --tags --max-count=1`>newestTag.txt'
+          TagName = readFile("newestTag.txt")
+        }
+        sh "git checkout $TagName"
+        packageVersion = TagName.tokenize('-')[1].tokenize()[0]
+
+        //sh "gradle build"
+        //sh "gradle fatJar"
+        //sh "gradle makeManifest"
+      }
+    }
 
     stage("Archive") {
-			zipName="${app_package_name}_${packageVersion}.zip"
+      zipName = "${app_package_name}_${packageVersion}.zip"
 
-			dir("${app_package_name}") {
+      dir("${app_package_name}") {
         sh "zip -r ${zipName} ./*"
         retry(2) {
           sh "python3 ../Blob/blobUploadDownload.py upload ${blob_container} ${zipName} ./${zipName} ${blob_container_key}"
         }
-			}	
-		}
-	}
-	catch (exc) {
-		// Set result to "FAILURE" if any error occurs
-		result = 'FAILURE'
-	}
-	finally{
-		// Set the execution state for the pipeline
-		currentBuild.result = result
-	}
+      }
+    }
+  }
+  catch (exc) {
+    // Set result to "FAILURE" if any error occurs
+    result = 'FAILURE'
+  }
+  finally {
+    // Set the execution state for the pipeline
+    currentBuild.result = result
+  }
 }
 ```
 
