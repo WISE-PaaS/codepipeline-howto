@@ -508,7 +508,7 @@ You may leave the ``TagName`` empty and click OK. The script will fetch the late
 
 <br>
 
-Then you should see a prompt as following.
+Then you should see a flash prompt as following.
 
 ![run started](files/run-started.png)
 
