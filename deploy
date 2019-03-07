@@ -1,10 +1,10 @@
 node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面执行的，避免与其他app的部署产生冲突
 	def result = "SUCCESS"   //result变量用来记录pipeline执行的结果，初始化为SUCCESS
-	def postgresql_service_group = "g_sample"   //配置postgresql的group参数
-	def app_package_name = "javasamplecode"   //上传到blob的package名称的前缀，例如package的名称为javasamplecode_1.0.0.zip，其前缀为javasamplecode
-	def app_host = "portal-javasamplecode"   //app route的前缀，例如前缀为portal-javasamplecode，之后route会自动组合为portal-javasamplecode-orgname-spacename
-	def blob_container = "javasamplecode"   //package所在的blob的container的名字，需要跟平台管理员申请
-	def blob_container_key = 'WSsGUdfUpGlFJdNASGWn3qSogHRRty49IfS8JJ4M69l5axPvP4hwh/RUJrsFZPwrgph9enmS+wgxTZxf7lWdR78kUqeLkKIusxr9K0sfgsa5ASW58bO37gHLqv1p+8bQEOUYLFRTKXBYc9cqPh1JZKvw5l2lZxM1a3zaBbR7/hI=' //上传下载blob所需要的key，需要跟平台管理员申请
+	// def postgresql_service_group="g_sample"   //配置postgresql的group参数
+	def app_package_name = "StaticSampleCode"   //上传到blob的package名称的前缀，例如package的名称为javasamplecode_1.0.0.zip，其前缀为javasamplecode
+	def app_host = "static-pipeline-demo"   //app route的前缀，例如前缀为portal-javasamplecode，之后route会自动组合为portal-javasamplecode-orgname-spacename
+	def blob_container = "sedev"   //package所在的blob的container的名字，需要跟平台管理员申请
+	// def blob_container_key='WSsGUdfUpGlFJdNASGWn3qSogHRRty49IfS8JJ4M69l5axPvP4hwh/RUJrsFZPwrgph9enmS+wgxTZxf7lWdR78kUqeLkKIusxr9K0sfgsa5ASW58bO37gHLqv1p+8bQEOUYLFRTKXBYc9cqPh1JZKvw5l2lZxM1a3zaBbR7/hI=' //上传下载blob所需要的key，需要跟平台管理员申请
 	try {
 		//做一些准备工作
 		stage('Prepare'){
@@ -12,6 +12,7 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 			sh 'rm -rf *'
 
 			//解析service的参数
+			// mongodb service
 			if (mongodb_service_info == "") {
 				mongodb_service_name = "mongodb"
 				mongodb_service_plan = "Shared"
@@ -22,6 +23,8 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 				mongodb_service_plan = mongodb_info_list[1]
 				mongodb_service_instance_name = mongodb_info_list[2]
 			}
+
+			// postgresql service
 			if (postgresql_service_info == "") {
 				postgresql_service_name = "postgresql"
 				postgresql_service_plan = "Shared"
@@ -32,6 +35,8 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 				postgresql_service_plan = postgresql_info_list[1]
 				postgresql_service_instance_name = postgresql_info_list[2]
 			}
+
+			// rabbitmq service
 			if (rabbitmq_service_info == "") {
 				rabbitmq_service_name = "p-rabbitmq"
 				rabbitmq_service_plan = "standard"
@@ -47,7 +52,7 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 			lowOrgName = cf_org.toLowerCase()
 			lowSpaceName = cf_space.toLowerCase()
 
-			//获取org的guid
+			//login to CF and 获取org的guid
 			sh "cf login -u $cf_username -p $cf_password -o $cf_org -s $cf_space -a api.$cf_domain --skip-ssl-validation;cf org $cf_org --guid>>orgid.txt"
 			org_id = readFile('orgid.txt').tokenize()[0]
 			if (org_id == "FAILED") {
@@ -80,10 +85,15 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 					}
 					//获取zip包的名字
 					sh "find -name '*.zip'>zipName.txt"
-					zipName = readFile("zipName.txt").tokenize('/')[1].tokenize()[0]
+          
+          // Inspection
+          readContent = readFile("zipName.txt")
+          print '\n\nreadContent: ' + readContent + '\n\n'
+
+					zipName = readContent.tokenize('/')[1].tokenize()[0]
 					zipVersion = zipName.tokenize('_')[1]
 					DeployVersion = zipVersion.split('.zip')[0]
-				} else {
+				} else { // 如果有指定 DeployVersion
 					zipName = "${app_package_name}_${DeployVersion}.zip"
 					retry(2){
 						timeout(5){
@@ -94,35 +104,51 @@ node('deploy'){    //pipeline运行的节点，srp的部署都是在docker上面
 				}
 				//解压zip包
 				sh "unzip -o -d ./ ${zipName}"
-				//复制manifest
+				//复制 manifest 並修改 manifest 名稱
+				sh "cat manifest.yml"
 				sh "cp manifest.yml manifest-${lowOrgName}-${lowSpaceName}.yml"
-				//读取app的名字
+				
+				// 读取app的名字 (name field in the manifest)
 				sh "python3 ../manifest_operation/GetAppName.py  manifest-${lowOrgName}-${lowSpaceName}.yml"
 				app_name = readFile("appname.txt")
 				//从app的名字中解析出app的version
 				app_version = app_name.tokenize('-')[-1].tokenize()[0]
+
+				// Inspection
+				print '\n\napp_version: ' +  app_version + '\n\n'
+				print '\n\nDeployVersion: ' + DeployVersion + '\n\n'
+
+				// 檢查 name 所指定的版本號與 DeployVersion 是否相同
 				if (DeployVersion != app_version) {
 					error "Package version is different with version in app name!!!"
 				}
-				//修改manifest，1. 修改host，加上带版本的host，修改后的格式为"${app_host}-1-0-0-${lowOrgName}-${lowSpaceName}"；2. 在环境变量中加上org_name和org_id，用于注册sso； 3. 在环境变量中加入各个service的名字，主要为读取credential使用
+				// === 修改 manifest === 
+				// 1. 修改host，加上带版本的host，修改后的格式为"${app_host}-1-0-0-${lowOrgName}-${lowSpaceName}"；
+				// 2. 加入 domain
+				// 3. 在环境变量中加上org_name和org_id，用于注册sso； 
+				// 4. 在环境变量中加入各个service的名字，主要为读取credential使用
 				sh "python3 ../manifest_operation/ModifyManifest.py manifest-${lowOrgName}-${lowSpaceName}.yml ${lowOrgName} ${lowSpaceName} ${cf_domain} ${app_host} ${DeployVersion} ${postgresql_service_name}:${postgresql_service_instance_name} ${mongodb_service_name}:${mongodb_service_instance_name} ${rabbitmq_service_name}:${rabbitmq_service_instance_name} org_name:${cf_org},org_id:${org_id}"
-				sh "cat manifest-${lowOrgName}-${lowSpaceName}.yml"
+				// 印出 manifest 修改後內容
+				sh "cat manifest-${lowOrgName}-${lowSpaceName}.yml" 
 			}
 		}
 
-		//部署app到指定的space
+		//部署 app 到指定的 space
 		stage("Deploy") {
 			dir("${app_package_name}") {
 				retry(5){
 					//1.push app到CF，push之后先不启动app；2.为app绑定postgresql服务；3.启动app
 					sh "cf push -f manifest-${lowOrgName}-${lowSpaceName}.yml --no-start"
-					sh """ cf bind-service ${app_name} ${postgresql_service_instance_name} -c '{\"groups\":[\"${postgresql_service_group}\"]}' """
+					// 靜態網頁不需要 bind service
+					// sh """ cf bind-service ${app_name} ${postgresql_service_instance_name} -c '{\"groups\":[\"${postgresql_service_group}\"]}' """
 					sh "cf start ${app_name}"
 				}
 			}
 		}
 
-		//蓝绿切换，1. IfMapUrlDirectly为true，将host map到新的app，并从旧的app unmap掉，停止旧版本的app；2. IfRemainBlueVersion为true，删除旧的app，并删除带版本的url；
+		// 蓝绿切换:
+		// 1. IfMapUrlDirectly为true，将host map到新的app，并从旧的app unmap掉，停止旧版本的app；
+		// 2. IfRemainBlueVersion为true，删除旧的app，并删除带版本的url；
 		stage("Blue_Green_Switch") {
 			build job: 'pipeline_Blue_Green_Switch', parameters: [
 				[$class: 'StringParameterValue', name: 'cf_domain', value: "${cf_domain}"],

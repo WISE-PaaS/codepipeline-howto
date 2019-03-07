@@ -1,74 +1,95 @@
 // Build Pipeline Sample
 
-// 目前我们平台提供go、gradle、npm三种编译环境，go和gradle环境的node名称分别为'go'和'gradle',
-// npm有提供linux和windows两个环境，linux环境node名称为'npm'，windows版本node名称为'npm_win7'，请根据对编译环境的要求修改对应的node名称。
-
 node('gradle'){
-  def result = "SUCCESS"   //result变量用来存储pipeline执行的结果，初始化为SUCCESS
-  def app_package_name = "javasamplecode"   //上传到blob的package名称的前缀，例如package的名称为javasamplecode_1.0.0.zip，其前缀为javasamplecode
-  def blob_container = "public"   //package所在的blob的container的名字
-  def sourceCodeGitUrl = "http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/JavaSampleCode.git"   //SourceCode的git地址
-  try {
-    //做一些准备工作
-    stage('Prepare'){
-      //清除上一次pipeline执行记录
-      sh 'rm -rf *'
+	def result = "SUCCESS"   //result变量用来存储pipeline执行的结果，初始化为SUCCESS
+	def app_package_name="StaticSampleCode"   //上传到blob的package名称的前缀，例如package的名称为javasamplecode_1.0.0.zip，其前缀为javasamplecode
+	def blob_container="sedev"   //package所在的blob的container的名字
+  // def blob_container_key="WSsGUdfUpGlFJdNASGWn3qSogHRRty49IfS8JJ4M69l5axPvP4hwh/RUJrsFZPwrgph9enmS+wgxTZxf7lWdR78kUqeLkKIusxr9K0sfgsa5ASW58bO37gHLqv1p+8bQEOUYLFRTKXBYc9cqPh1JZKvw5l2lZxM1a3zaBbR7/hI="
+	def sourceCodeGitUrl="http://advgitlab.eastasia.cloudapp.azure.com/SE-Dev/Static-Sample-Code.git"   //SourceCode的git地址
+	try{                  
+		//做一些准备工作
+		stage('Prepare'){ 
+			//清除上一次pipeline执行记录
+			sh 'rm -rf *'
+			
+			//下载从blob上传或者下载package的脚本
+			dir("Blob"){
+				retry(2){
+					git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload.git'
+				}
+			}	
+		}         
+		
+		stage("Build") {
+			dir("${app_package_name}"){
 
-      //下载从blob上传或者下载package的脚本
-      dir("Blob") {
-        retry(2){
-          git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/EI-PaaS_DevOps_Pipeline/blobUploadDownload.git'
-        }
-      }
-    }
+				//下载SourceCode
+				retry(2){
+					git credentialsId: "${git_credential}", url: "${sourceCodeGitUrl}"  
+				}
+				
+				//如果TagName为空，获取最新的tag的名字
+        print '\n\n\nTagName: ' + TagName + '\n\n\n'
 
-    stage("Build") {
-      dir("${app_package_name}"){
-        //下载SourceCode
-        retry(2){
-          git credentialsId: "${git_credential}", url: "${sourceCodeGitUrl}"
-        }
+				if(TagName==""){
+				    sh 'git describe --tags `git rev-list --tags --max-count=1`>newestTag.txt'  
+				    TagName=readFile("newestTag.txt")
+				}
+				
+				//切换到tag对应的sourcecode
+				sh "git checkout $TagName"
+				packageVersion=TagName.tokenize('-')[1].tokenize()[0]
+				
+				//添加编译SourceCode的命令
+				//sh "gradle build"
+				//sh "gradle fatJar"
+				//sh "gradle makeManifest"
 
-        //如果TagName为空，获取最新的tag的名字
-        if (TagName == "") {
-          sh 'git describe --tags `git rev-list --tags --max-count=1`>newestTag.txt'
-          TagName = readFile("newestTag.txt")
-        }
+			}
+		}
+		
+    // ============================ 有生成 dist ==================================================
+		// stage("Archive") {
+		// 	zipName="${app_package_name}_${packageVersion}.zip"
+		// 	dir("${app_package_name}"){
+		// 		dir("${app_package_name}_${packageVersion}"){
+		// 			//拷贝需要打包的文件
+    //       // dist 是編譯時產生的資料夾 
+		// 			sh "cp ../dist/* ./"
+		// 			sh "cp ../manifest.yml ./"
 
-        //切换到tag对应的sourcecode
-        sh "git checkout $TagName"
-        packageVersion = TagName.tokenize('-')[1].tokenize()[0]
+		// 			//将需要打包的文件打包成zip包
+		// 			sh "zip -r ${zipName} ./*"
+		// 			retry(2){
+		// 				//上传zip包到blob，blobUploadDownload.py脚本有4个参数，（1）upload代表要上传（2）bob container的名字（3）文件上传到blob后的名字（4）需要上传的文件
+		// 				sh "python3 ../../Blob/blobUploadDownload.py upload ${blob_container} ${zipName}  ./${zipName}"
+		// 			}
+		// 		}
+		// 	}	
+		// }
 
-        //添加编译SourceCode的命令
-        //sh "gradle build"
-        //sh "gradle fatJar"
-        //sh "gradle makeManifest"
-      }
-    }
-
+    // ============================ 無生成 dist ==================================================
     stage("Archive") {
-      zipName = "${app_package_name}_${packageVersion}.zip"
-      dir("${app_package_name}"){
-        dir("${app_package_name}_${packageVersion}"){
-          //拷贝需要打包的文件
-          sh "cp ../dist/* ./"
-          sh "cp ../manifest.yml ./"
-          //将需要打包的文件打包成zip包
-          sh "zip -r ${zipName} ./*"
-          retry(2){
-            //上传zip包到blob，blobUploadDownload.py脚本有4个参数，（1）upload代表要上传（2）bob container的名字（3）文件上传到blob后的名字（4）需要上传的文件
-            sh "python3 ../../Blob/blobUploadDownload.py upload ${blob_container} ${zipName}  ./${zipName}"
-          }
+			zipName="${app_package_name}_${packageVersion}.zip"
+
+			dir("${app_package_name}"){
+
+        //将需要打包的文件打包成zip包
+        sh "zip -r ${zipName} ./*"
+
+        retry(2){
+          //上传zip包到blob，blobUploadDownload.py脚本有4个参数，（1）upload代表要上传（2）bob container的名字（3）文件上传到blob后的名字（4）需要上传的文件
+          sh "python3 ../Blob/blobUploadDownload.py upload ${blob_container} ${zipName} ./${zipName} ${blob_container_key}"
         }
-      }
-    }
-  }
-  catch (exc) {
-    //当执行过程出现异常时，捕获异常，将result变量赋值为'FAILURE'
-    result = 'FAILURE'
-  }
-  finally {
-    //设置pipeline执行状态
-    currentBuild.result = result
-  }
+			}	
+		}
+	}
+	catch (exc) {
+		//当执行过程出现异常时，捕获异常，将result变量赋值为'FAILURE'
+		result = 'FAILURE'
+	}
+	finally{
+		//设置pipeline执行状态
+		currentBuild.result = result
+	}
 }

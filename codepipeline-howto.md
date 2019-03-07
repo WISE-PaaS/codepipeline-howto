@@ -5,6 +5,7 @@ This document will explain how to implement the continuous integration and deliv
 ### Table of Contents
 - [Concept](#Concept)
 - [Prerequisites](#Prerequisites)
+- [Basic Syntax](#Basic-Syntax)
 - [Develop a Build Pipeline](#Develop-a-Build-Pipeline)
 - [Run a Pipeline](#Run-a-Pipeline)
 - [Develop a Deploy Pipeline](#Develop-a-Deploy-Pipeline)
@@ -123,7 +124,94 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
 
 <br>
 
+## Basic Syntax
+
+Our CodePipeline platform now offers three four types of the build environment
+- go
+- gradle
+- npm
+- npm_win7
+
+The build script follows Groovy syntax. Use one of these options as your node name according to your need. The names should explain themselves clearly. Use `npm_win7` if you are working with Windows Command Prompt.
+
+### dir
+
+```groovy
+dir('Test') {
+
+  // Tasks
+
+}
+```
+
+To run the tasks under the `Test` directory. If there is no such directory, then create the directory and jump into it.
+
+### bat
+
+To run the CLI commands for Windows.
+
+```groovy
+bat 'echo aaa'
+bat "copy ..\\EI-Dashboard-Green-SonarProperties\\sonar-project.properties .\\"
+bat "python api.test.py"
+```
+
+### sh
+
+To run the CLI commands for Linux.
+
+```groovy
+sh 'echo aaa'
+sh 'gradle build'
+sh 'zip -r EI-Dashboard_$BuildID.zip ./*'
+sh "python3 ReturnStageStatus.py"
+```
+
+### git
+
+To download the source code from the remote git repository.
+
+```groovy
+git credentialsId: "${git_credential}", url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload.git'
+```
+
+If you want to download the code from multiple repositories, make sure you download them into different local directories, otherwise the previous content will be overwritten. 
+
+```groovy
+dir("Demo_APITest") {
+  git credentialsId: 'xxxxxxxxxxxxxxxxx', url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS2.0_DevOps/Demo_RestfulAPITest.git'
+}
+dir("Demo_PerformanceTest") {
+  git credentialsId: 'xxxxxxxxxxxxxxxxx', url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS2.0_DevOps/Demo_PerformanceTest.git'
+}
+dir("Demo_WebUITest") {
+  git credentialsId: 'xxxxxxxxxxxxxxxxx', url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS2.0_DevOps/Demo_WebUITest.git'
+}
+```
+
+### retry
+
+To retry a code block if the execution of that block fails. The code block can be a **step**, a **stage**, or even the whole **pipeline**.
+
+```groovy
+retry(3) { // up to three times
+  git credentialsId: 'xxxxxxxxxxxxxxxxxxxxx', url: 'http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS2.0_DevOps/Demo_RestfulAPITest.git'
+}
+```
+
+**Note**
+
+You can only retry three times at most when you are using ``git`` to dowload the code.
+
+
+<br>
+
 ## Develop a Build Pipeline
+
+
+
+
+
 
 <br>
 
