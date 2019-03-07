@@ -522,6 +522,9 @@ If the pipeline is finished successfully, you should see a newly-added record nd
 
 Check your blob container with the Azure Storae Explorer to see if the package has been uploaded.
 
+To refesh the page, click **More** button at the top-right corner and click **Refresh**.
+
+![azure tool](files/azure-tool.png)
 
 
 <br>
