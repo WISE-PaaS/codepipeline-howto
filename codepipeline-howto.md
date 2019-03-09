@@ -514,7 +514,7 @@ Then you should see a flash prompt as following.
 
 <br>
 
-If the pipeline is finished successfully, you should see a newly-added record nder the **BuildHistory** tab of your pipeline, showing "succeeded".
+If the pipeline is run successfully, you should see a newly-added record under the **BuildHistory** tab of your pipeline, showing "succeeded". You may also click the eye icon on the right side to view the log if you want to do any troubleshooting.
 
 ![run history](files/run-history.png)
 
