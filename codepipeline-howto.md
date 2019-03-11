@@ -117,8 +117,16 @@ This one can be used with the **Azure Storage Explorer** to connect to your blob
     - Description
       - Account: \<userAccount\>
       - Purpose: To develop the auto-deploy pipeline for the SRP: \<srpName\>
+      - GroupName (optional): \<srpName\>
 
-2. You will soon receive a confirmation that a group named as your SRP name has been created. You can create your own project inside the group
+    **Note**: Specify a **\<GroupName\>** if you are also developing the SRP and want to push your source code onto [WISE-PaaS Gitlab](http://advgitlab.eastasia.cloudapp.azure.com/). Then a group named after your SRP will be created.
+
+2. You will soon receive a confirmation that either
+    - a **pipeline project** under _CodePipeline_Develop_ has been created for you to push your pipeline script 
+    
+      or
+    
+    - a **group** named after your SRP has been created if you want to create your own projects and store the source code for your SRP.
 
 3. Make sure you can accesss the [blobUploadDownload](http://advgitlab.eastasia.cloudapp.azure.com/WISE-PaaS_CodePipeline/blobUploadDownload) repository. If you still don't have the permission, go to the ticket that you filed and comment down your problem, and someone will help you fix it shortly.
 
